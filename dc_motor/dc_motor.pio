@@ -1,0 +1,38 @@
+;;;;
+.program dc_motor
+.side_set 2 opt
+fetch: 
+    pull noblock side 0b00         ; Pull from FIFO to OSR if available, else copy X to OSR.
+    mov x osr                      ; Copy most-recently-pulled value back to scratch X
+    out pins 2                     ; select direction
+    out y 15                       ; 15 bits for on-time
+on_loop:    
+    jmp y-- on_loop                ; loop until on-time is zero
+    out y 15 side 0b00             ; 15 bits for off-time
+off_loop:   
+    jmp y-- off_loop               ; loop until off-time is zero
+
+% c-sdk {
+static inline void dc_motor_program_init(PIO pio, uint sm, uint offset, uint firstPWMpin) {
+    // Initialize the output pins
+    pio_gpio_init(pio, firstPWMpin);
+    pio_gpio_init(pio, firstPWMpin + 1);
+    
+    // Set consecutive pin directions for both output pins
+    pio_sm_set_consecutive_pindirs(pio, sm, firstPWMpin, 2, true);
+
+    // Load default config and set side-set pins
+    pio_sm_config c = dc_motor_program_get_default_config(offset);
+    sm_config_set_sideset_pins(&c, firstPWMpin);
+    sm_config_set_out_pins(&c, firstPWMpin, 2);
+    
+    // Configure clkdiv
+    sm_config_set_clkdiv(&c, 1);
+
+    // Initialize the state machine with the updated configuration
+    pio_sm_init(pio, sm, offset, &c);
+
+    // Set both pins to 0
+    pio_sm_set_pins(pio, sm, 0);
+}
+%}
