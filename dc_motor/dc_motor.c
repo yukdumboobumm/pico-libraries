@@ -31,6 +31,7 @@ void initMotor(DC_MOTOR *motor, uint p1, uint p2, uint p3, uint p4)
     //initialize pwm and state variables to zero
     motor->freq = 0, motor->dutyCycle = 0, motor->dir = 0, motor->runFlag = 0;
     motor->period = 0, motor->pwmOnCycles = 0, motor->pwmOffCycles = 0;
+    DEBUG_PRINT("DC MOTOR PINS\nREn: %d, LEn: %d, RPWM: %d, LPWM: %d\n", motor->R_ENABLE_PIN, motor->L_ENABLE_PIN, motor->R_PWM_PIN, motor->L_PWM_PIN);
 }
 
 //initialize the motor with PWM frequency and duty cycle
@@ -38,10 +39,9 @@ void initMotor(DC_MOTOR *motor, uint p1, uint p2, uint p3, uint p4)
 void initMotorPWM(DC_MOTOR *motor, uint freq) {
     motor->freq = freq;
     //determine pwm period and on/off cycles
-    motor->period = (clock_get_hz(clk_sys) / motor->freq) - 7;//PIO program has 7 instructions
+    motor->period = (clock_get_hz(clk_sys) / motor->freq) - 7;//dc_motor PIO program has 7 instructions
     DEBUG_PRINT("sys clock: %d\n", clock_get_hz(clk_sys));
-    DEBUG_PRINT("requested frequency: %d\n", motor->freq);
-    DEBUG_PRINT("PWM period: %d\n", motor->period);
+    DEBUG_PRINT("PWM frequency: %d\n", motor->freq);
 }
 
 //grab a state machine, load, and initialize it
@@ -92,6 +92,6 @@ void setMotorSpeed(DC_MOTOR *motor, float speed) {
     motor->dutyCycle = speed;
     motor->pwmOnCycles = motor->period * motor->dutyCycle / 100U;
     motor->pwmOffCycles = motor->period - motor->pwmOnCycles;
-    DEBUG_PRINT("Speed changed to: %f\n", motor->dutyCycle);
+    DEBUG_PRINT("Speed changed to: %.2f\n", motor->dutyCycle);
     DEBUG_PRINT("with on cycles: %d, off cycles: %d\n", motor->pwmOnCycles, motor->pwmOffCycles);
 }

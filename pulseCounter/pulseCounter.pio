@@ -1,0 +1,31 @@
+;;;;
+.program pulse_counter
+    pull block
+    out x 32
+poll:
+    jmp pin pinhigh
+    jmp poll
+pinhigh:
+    wait 0 pin 0
+    jmp x-- poll
+    irq wait 0
+
+% c-sdk {
+static inline void pulse_counter_program_init(PIO pio, uint sm, uint offset, uint pulsePin) {
+    // Set consecutive pin directions
+    pio_sm_set_consecutive_pindirs(pio, sm, pulsePin, 1, false);
+    gpio_pull_down(pulsePin);
+
+    // Load default config
+    pio_sm_config c = pulse_counter_program_get_default_config(offset);
+    
+    // Configure clkdiv
+    sm_config_set_clkdiv(&c, 1);
+    // set the 'wait' pin (uses 'in' pins)
+    sm_config_set_in_pins(&c, pulsePin);
+    sm_config_set_jmp_pin(&c, pulsePin);
+    
+    // Initialize the state machine with the updated configuration
+    pio_sm_init(pio, sm, offset, &c);
+}
+%}
