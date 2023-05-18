@@ -34,6 +34,7 @@ struct DC_MOTOR
     float dutyCycle; //percentage 0-100.0
     bool dir; //current rotation direction
     bool runFlag; //are we running
+    bool speedChange;
     
     //pins
     uint R_ENABLE_PIN;

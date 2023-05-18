@@ -71,17 +71,18 @@ void stopMotor(DC_MOTOR *motor) {
 //&MOTOR, DIRECTION
 void runMotor(DC_MOTOR *motor, bool dir) {
     //check if we actually need to do anything
-    if (dir != motor->dir || motor->runFlag == false) {
-        if (motor->runFlag) stopMotor(motor);
+    if (dir != motor->dir || motor->runFlag == false || motor->speedChange == true) {
+        if (motor->runFlag && dir != motor->dir) stopMotor(motor);
         uint32_t SM_word = (motor->pwmOffCycles & 0x7fff) << 17; //shift the 15 bit off-cycles to the MSBs of 32 bit word
         SM_word |= (motor->pwmOnCycles & 0x7fff) << 2; //shift 15 bits of on-cycles next, leaving two bits for dir and run
         SM_word |=  dir + 1; //0b10 or 0b01 will set the out-pins in a single instruction
         motor->runFlag = true;
+        motor->speedChange = false;
         motor->dir = dir;
         DEBUG_PRINT("RUNNING MOTOR\n");
         pio_sm_drain_tx_fifo(motor->PIO_NUM, motor->SM_NUM); //safe
         pio_sm_put_blocking(motor->PIO_NUM, motor->SM_NUM, SM_word);//send our word to the TX FIFO
-        pio_sm_set_enabled(motor->PIO_NUM, motor->SM_NUM, true);//start the SM
+        // pio_sm_set_enabled(motor->PIO_NUM, motor->SM_NUM, true);//start the SM
         gpio_put(motor->R_ENABLE_PIN, true);
         gpio_put(motor->L_ENABLE_PIN, true);
     }
@@ -92,6 +93,7 @@ void setMotorSpeed(DC_MOTOR *motor, float speed) {
     motor->dutyCycle = speed;
     motor->pwmOnCycles = motor->period * motor->dutyCycle / 100U;
     motor->pwmOffCycles = motor->period - motor->pwmOnCycles;
+    motor->speedChange = true;
     DEBUG_PRINT("Speed changed to: %.2f\n", motor->dutyCycle);
     DEBUG_PRINT("with on cycles: %d, off cycles: %d\n", motor->pwmOnCycles, motor->pwmOffCycles);
 }
