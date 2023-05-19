@@ -30,6 +30,7 @@ struct PULSE_COUNTER {
     uint32_t count;
     absolute_time_t countStartTime;
     absolute_time_t countEndTime;
+    int64_t timeDiff_us;
 
     bool countStarted;
     bool countReady;

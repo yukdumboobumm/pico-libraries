@@ -1,4 +1,4 @@
-#define DEBUG
+// #define DEBUG
 #include "pulseCounter.h"
 
 //interrupt usage table
@@ -16,6 +16,7 @@ void initPulseCounter(PULSE_COUNTER *pc, uint pin,  enum INT_NUM intNum) {
     pc->count = 0;
     pc->countStartTime = nil_time;
     pc->countEndTime = nil_time;
+    pc->timeDiff_us = 0;
     pc->countStarted = false;
     pc->countReady = false;
     pc->intFlag = false;
@@ -98,12 +99,12 @@ void startCount(PULSE_COUNTER *pc, uint numPulses) {
 }
 
 void calcSpeed(PULSE_COUNTER *pc) {
-    int64_t timeDiff = absolute_time_diff_us(pc->countStartTime, pc->countEndTime);
-    int32_t timeDiff_ms = timeDiff / 1000;
+    pc->timeDiff_us = absolute_time_diff_us(pc->countStartTime, pc->countEndTime);
+    int32_t timeDiff_ms = pc->timeDiff_us / 1000;
     int32_t timeDiff_s = timeDiff_ms / 1000;
-    if (timeDiff) {
-        DEBUG_PRINT("count: %d time diff us: %llu ms: %d secs: %d\n", pc->count, timeDiff, timeDiff_ms, timeDiff_s);
-        pc->currentHertz = ((double)pc->count * 1000 * 1000) / (timeDiff);
+    if (pc->timeDiff_us) {
+        DEBUG_PRINT("count: %d time diff us: %llu ms: %d secs: %d\n", pc->count, pc->timeDiff_us, timeDiff_ms, timeDiff_s);
+        pc->currentHertz = ((double)pc->count * 1000 * 1000) / (pc->timeDiff_us);
         pc->currentRPM = pc->currentHertz * 60;
         DEBUG_PRINT("%.2f Hz, %d RPM\n", pc->currentHertz, (uint)pc->currentRPM);
     }
