@@ -51,7 +51,8 @@ void initPulseCounter(PULSE_COUNTER *pc, uint pin,  enum INT_NUM intNum) {
     }
     gpio_init(pin);
     gpio_set_dir(pin, GPIO_IN);  // set the pin to be an input pullup
-    gpio_pull_down(pin);
+    // gpio_pull_down(pin);
+    // gpio_pull_up(pin);
 }
 //this is probably too much work for an ISR. need to rethink how to build this for 
 //the possiblity of several pulsecounter instances. will work for the single one i have now.
