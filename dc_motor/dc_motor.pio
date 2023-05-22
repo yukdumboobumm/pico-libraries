@@ -1,4 +1,5 @@
-;;;;
+;;;; with support from the raspberry pi pico sdk forum
+;;;; see https://forums.raspberrypi.com/viewtopic.php?t=351240
 .program dc_motor
 .side_set 2 opt
 fetch: 
