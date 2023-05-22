@@ -24,14 +24,16 @@ void initMotor(DC_MOTOR *, uint, uint, uint, uint);//&MOTOR, R-ENABLE, L-ENABLE,
 void initMotorPWM(DC_MOTOR *, uint);//&MOTOR, FREQUENCY, DUTY CYCLE, PIO NUM
 void initMotorPIO(DC_MOTOR *, PIO);//&MOTOR
 void stopMotor(DC_MOTOR *);//MOTOR
-void runMotor(DC_MOTOR *, bool);//&MOTOR, DIRECTION
-void setMotorSpeed(DC_MOTOR *, float);//&MOTOR, SPEED
+void runMotor(DC_MOTOR *, bool, float);//&MOTOR, DIRECTION
+// void setMotorSpeed(DC_MOTOR *, float);//&MOTOR, SPEED
+void runMotorForward(DC_MOTOR *, float);
 
 struct DC_MOTOR
 {
     //motor variables
     uint16_t freq; //in hz
-    float dutyCycle; //percentage 0-100.0
+    float setDutyCycle; //percentage 0-100.0
+    float currentDutyCycle;
     bool dir; //current rotation direction
     bool runFlag; //are we running
     bool speedChange;

@@ -1,4 +1,4 @@
-#define DEBUG
+// #define DEBUG
 #include "dc_motor.h"
 
 //initialize our pins
@@ -29,7 +29,7 @@ void initMotor(DC_MOTOR *motor, uint p1, uint p2, uint p3, uint p4)
     gpio_put(motor->L_PWM_PIN, false);
 
     //initialize pwm and state variables to zero
-    motor->freq = 0, motor->dutyCycle = 0, motor->dir = 0, motor->runFlag = 0;
+    motor->freq = 0, motor->currentDutyCycle = 0, motor->setDutyCycle, motor->dir = 0, motor->runFlag = 0;
     motor->period = 0, motor->pwmOnCycles = 0, motor->pwmOffCycles = 0;
     DEBUG_PRINT("DC MOTOR PINS\nREn: %d, LEn: %d, RPWM: %d, LPWM: %d\n", motor->R_ENABLE_PIN, motor->L_ENABLE_PIN, motor->R_PWM_PIN, motor->L_PWM_PIN);
 }
@@ -64,14 +64,15 @@ void stopMotor(DC_MOTOR *motor) {
     pio_sm_drain_tx_fifo(motor->PIO_NUM, motor->SM_NUM); //safe
     pio_sm_put_blocking(motor->PIO_NUM, motor->SM_NUM, 0);//send our word to the TX FIFO
     motor->runFlag = false;
+    motor->currentDutyCycle = 0;
     sleep_ms(2000);
 }
 
 //run a motor in the given direction by setting enable pins and starting the staate machine
 //&MOTOR, DIRECTION
-void runMotor(DC_MOTOR *motor, bool dir) {
+void runMotor(DC_MOTOR *motor, bool dir, float speed) {
     //check if we actually need to do anything
-    if (dir != motor->dir || motor->runFlag == false || motor->speedChange == true) {
+    if (dir != motor->dir || motor->runFlag == false) {
         if (motor->runFlag && dir != motor->dir) stopMotor(motor);
         uint32_t SM_word = (motor->pwmOffCycles & 0x7fff) << 17; //shift the 15 bit off-cycles to the MSBs of 32 bit word
         SM_word |= (motor->pwmOnCycles & 0x7fff) << 2; //shift 15 bits of on-cycles next, leaving two bits for dir and run
@@ -83,17 +84,58 @@ void runMotor(DC_MOTOR *motor, bool dir) {
         pio_sm_drain_tx_fifo(motor->PIO_NUM, motor->SM_NUM); //safe
         pio_sm_put_blocking(motor->PIO_NUM, motor->SM_NUM, SM_word);//send our word to the TX FIFO
         // pio_sm_set_enabled(motor->PIO_NUM, motor->SM_NUM, true);//start the SM
+        DEBUG_PRINT("Instruction sent to PIO motor controller\n");
         gpio_put(motor->R_ENABLE_PIN, true);
         gpio_put(motor->L_ENABLE_PIN, true);
     }
 }
 
-//set the motor speed as a percentage of the PWM period (duty cycle)
-void setMotorSpeed(DC_MOTOR *motor, float speed) {
-    motor->dutyCycle = speed;
-    motor->pwmOnCycles = motor->period * motor->dutyCycle / 100U;
-    motor->pwmOffCycles = motor->period - motor->pwmOnCycles;
-    motor->speedChange = true;
-    DEBUG_PRINT("Speed changed to: %.2f\n", motor->dutyCycle);
-    DEBUG_PRINT("with on cycles: %d, off cycles: %d\n", motor->pwmOnCycles, motor->pwmOffCycles);
+// //set the motor speed as a percentage of the PWM period (duty cycle)
+// void setMotorSpeed(DC_MOTOR *motor, float speed) {
+//     motor->dutyCycle = speed;
+//     motor->pwmOnCycles = motor->period * motor->dutyCycle / 100U;
+//     motor->pwmOffCycles = motor->period - motor->pwmOnCycles;
+//     motor->speedChange = true;
+//     DEBUG_PRINT("Speed changed to: %.2f\n", motor->dutyCycle);
+//     DEBUG_PRINT("with on cycles: %d, off cycles: %d\n", motor->pwmOnCycles, motor->pwmOffCycles);
+// }
+
+void runMotorReverse(DC_MOTOR *motor, float speed) {
+    bool dir = true;
+    if (motor->runFlag && dir != motor->dir) stopMotor(motor);
+}
+
+void runMotorForward(DC_MOTOR *motor, float speed) {
+    bool dir = true;
+    motor->setDutyCycle = speed;
+    uint32_t SM_word;
+    if (motor->runFlag && dir != motor->dir) stopMotor(motor);
+    DEBUG_PRINT("current: %.2f\tset: %.2f\n", motor->currentDutyCycle, motor->setDutyCycle);
+    while (motor->currentDutyCycle != motor->setDutyCycle) {
+        if ((motor->currentDutyCycle - motor->setDutyCycle < 1) && (motor->currentDutyCycle - motor->setDutyCycle > -1)) {
+            motor->currentDutyCycle = motor->setDutyCycle;
+        }
+        else {
+            if (motor->currentDutyCycle < motor->setDutyCycle) motor->currentDutyCycle++;
+            else motor->currentDutyCycle--;
+        }
+        DEBUG_PRINT("updated currentDutyCycle to: %.2f\n", motor->currentDutyCycle);
+        motor->pwmOnCycles = motor->period * motor->currentDutyCycle / 100U;
+        motor->pwmOffCycles = motor->period - motor->pwmOnCycles;
+        SM_word = (motor->pwmOffCycles & 0x7fff) << 17; //shift the 15 bit off-cycles to the MSBs of 32 bit word
+        SM_word |= (motor->pwmOnCycles & 0x7fff) << 2; //shift 15 bits of on-cycles next, leaving two bits for dir and run
+        SM_word |=  dir + 1; //0b10 or 0b01 will set the out-pins in a single instruction
+        motor->runFlag = true;
+        motor->dir = dir;
+        // DEBUG_PRINT("RUNNING MOTOR\n");
+        pio_sm_drain_tx_fifo(motor->PIO_NUM, motor->SM_NUM); //safe
+        pio_sm_put_blocking(motor->PIO_NUM, motor->SM_NUM, SM_word);//send our word to the TX FIFO
+        // pio_sm_set_enabled(motor->PIO_NUM, motor->SM_NUM, true);//start the SM
+        DEBUG_PRINT("Instruction sent to PIO motor controller\n");
+        gpio_put(motor->R_ENABLE_PIN, true);
+        gpio_put(motor->L_ENABLE_PIN, true);
+        // DEBUG_PRINT("SLEEPING FOR 100ms\n");
+        sleep_ms(100);
+    }
+    
 }
