@@ -1,4 +1,4 @@
-// #define DEBUG
+//#define DEBUG
 #include "pulseCounter.h"
 
 //interrupt usage table
